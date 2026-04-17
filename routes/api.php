@@ -10,6 +10,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\LenderController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\EducationModuleController;
 
 Route::get('/test', function () {
     return ['status' => 'API working'];
@@ -36,10 +37,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/create-subscription', [SubscriptionController::class, 'createSubscription']);
     Route::get('/check-access', [SubscriptionController::class, 'checkAccess']);
+
+    Route::get('/education-modules', [EducationModuleController::class, 'index']);
+  
 });
 
 
-    Route::post('/razorpay/webhook', [SubscriptionController::class, 'webhook']);
+Route::post('/razorpay/webhook', [SubscriptionController::class, 'webhook']);
 
 
 
+  Route::get('/education/audio', [EducationModuleController::class, 'audioModules']);
+    Route::get('/education/video', [EducationModuleController::class, 'videoModules']);

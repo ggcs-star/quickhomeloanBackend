@@ -30,7 +30,7 @@ class SubscriptionController extends Controller
             ]);
 
             Log::info('Razorpay Subscription Created', [
-                'subscription' => $subscription
+                'subscription' => $subscription->toArray()
             ]);
 
             $payment = UserPayment::create([
@@ -59,103 +59,120 @@ class SubscriptionController extends Controller
     }
 
    
-    public function webhook(Request $request)
-    {
-        try {
-            Log::info('Webhook Hit', $request->all());
+   public function webhook(Request $request)
+{
+    try {
+        Log::info('Webhook Hit RAW', ['payload' => $request->getContent()]);
 
-            $signature = $request->header('X-Razorpay-Signature');
-            $expected = hash_hmac(
-                'sha256',
-                $request->getContent(),
-                env('RAZORPAY_WEBHOOK_SECRET')
-            );
+        $payload = $request->getContent();
+        $signature = $request->header('X-Razorpay-Signature');
 
-            if ($signature !== $expected) {
-                Log::error('Invalid Webhook Signature');
-                return response()->json(['error' => 'Invalid signature'], 400);
-            }
+        $expected = hash_hmac(
+            'sha256',
+            $payload,
+            env('RAZORPAY_WEBHOOK_SECRET')
+        );
 
-            $event = $request['event'] ?? null;
-
-            Log::info('Webhook Event', ['event' => $event]);
-
-            if ($event == 'subscription.activated') {
-
-                $subId = $request['payload']['subscription']['entity']['id'] ?? null;
-
-                Log::info('Subscription Activated', ['sub_id' => $subId]);
-
-                $payment = UserPayment::where('subscription_id', $subId)->first();
-
-                if ($payment) {
-
-                    $payment->update([
-                        'status' => 'success',
-                        'start_date' => now(),
-                        'end_date' => now()->addMonth()
-                    ]);
-
-                    Log::info('Subscription Updated Successfully', [
-                        'user_id' => $payment->user_id
-                    ]);
-
-                } else {
-                    Log::error('Subscription Not Found in DB', [
-                        'sub_id' => $subId
-                    ]);
-                }
-            }
-
-            if ($event == 'subscription.cancelled') {
-
-                $subId = $request['payload']['subscription']['entity']['id'] ?? null;
-
-                UserPayment::where('subscription_id', $subId)
-                    ->update(['status' => 'cancelled']);
-
-                Log::info('Subscription Cancelled', ['sub_id' => $subId]);
-            }
-
-            return response()->json(['status' => 'ok']);
-
-        } catch (\Exception $e) {
-
-            Log::error('Webhook Error', [
-                'message' => $e->getMessage(),
-                'payload' => $request->all()
+      
+        if (!hash_equals($expected, $signature)) {
+            Log::error('Invalid Webhook Signature', [
+                'expected' => $expected,
+                'received' => $signature
             ]);
-
-            return response()->json([
-                'error' => 'Webhook failed'
-            ], 500);
+            return response()->json(['error' => 'Invalid signature'], 400);
         }
-    }
 
-    public function checkAccess()
-    {
-        try {
-            $userId = auth()->id();
+      
+        $data = json_decode($payload, true);
+        $event = $data['event'] ?? null;
 
-            $hasAccess = UserPayment::where('user_id', $userId)
-                ->where('status', 'success')
-                ->where('end_date', '>=', now()) 
-                ->exists();
+        Log::info('Webhook Event', ['event' => $event]);
 
-            return response()->json([
-                'access' => $hasAccess
-            ]);
+        if ($event == 'subscription.activated') {
 
-        } catch (\Exception $e) {
+            $subId = $data['payload']['subscription']['entity']['id'] ?? null;
 
-            Log::error('Check Access Error', [
-                'message' => $e->getMessage(),
-                'user_id' => auth()->id()
-            ]);
+            $payment = UserPayment::where('subscription_id', $subId)->first();
 
-            return response()->json([
-                'error' => 'Unable to check access'
-            ], 500);
+            if ($payment) {
+                $payment->update([
+                    'status' => 'success',
+                    'start_date' => now(),
+                    'end_date' => now()->addYear()
+                ]);
+            }
         }
+
+        if ($event == 'subscription.cancelled') {
+
+            $subId = $data['payload']['subscription']['entity']['id'] ?? null;
+
+            UserPayment::where('subscription_id', $subId)
+                ->update(['status' => 'cancelled']);
+        }
+
+        return response()->json(['status' => 'ok']);
+
+    } catch (\Exception $e) {
+
+        Log::error('Webhook Error', [
+            'message' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'error' => 'Webhook failed'
+        ], 500);
     }
+}
+
+public function checkAccess()
+{
+    try {
+        $userId = auth()->id();
+
+        $subscription = UserPayment::where('user_id', $userId)
+            ->where('status', 'success')
+            ->where('end_date', '>=', now())
+            ->latest()
+            ->first();
+
+        if ($subscription) {
+
+            $daysRemaining = now()->diffInDays($subscription->end_date, false);
+
+            return response()->json([
+                'access' => true,
+
+                'start_date' => $subscription->start_date,
+                'end_date' => $subscription->end_date,
+                'days_remaining' => $daysRemaining,
+
+                'auto_renewal' => 'Enabled',
+                'amount' => 999
+            ]);
+        }
+
+        return response()->json([
+            'access' => false,
+
+            'start_date' => null,
+            'end_date' => null,
+            'days_remaining' => 0,
+
+            'auto_renewal' => 'Enabled',
+            'amount' => 999
+        ]);
+
+    } catch (\Exception $e) {
+
+        Log::error('Check Access Error', [
+            'message' => $e->getMessage(),
+            'user_id' => auth()->id()
+        ]);
+
+        return response()->json([
+            'error' => 'Unable to check access'
+        ], 500);
+    }
+}
 }

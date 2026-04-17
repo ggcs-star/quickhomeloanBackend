@@ -17,7 +17,7 @@ return [
     */
 
     'name' => env('APP_NAME', 'Laravel'),
-
+    'admin_domain' => env('ADMIN_DOMAIN'),
     /*
     |--------------------------------------------------------------------------
     | Application Environment
