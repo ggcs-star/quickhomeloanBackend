@@ -12,10 +12,21 @@ class EducationModule extends Model
         'slug',
         'description',
         'order',
-        'status'
+        'status',
+        'image',
+        'color_code'
     ];
+     protected $appends = ['image_url'];
     public function contents()
     {
         return $this->hasMany(EducationContent::class, 'module_id');
+    }
+
+    public function getImageUrlAttribute()
+    {
+        if (!$this->image)
+            return null;
+
+        return rtrim(config('app.admin_domain'), '/') . '/storage/' . $this->image;
     }
 }
