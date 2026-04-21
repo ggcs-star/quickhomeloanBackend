@@ -11,6 +11,7 @@ use App\Http\Controllers\LenderController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\EducationModuleController;
+use App\Http\Controllers\CalculatorController;
 
 Route::get('/test', function () {
     return ['status' => 'API working'];
@@ -22,6 +23,7 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
 Route::post('/apply-loan/store', [ApplyLoanController::class, 'store']);
 
+Route::get('/calculators', [CalculatorController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', function (Request $request) {
@@ -39,7 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/check-access', [SubscriptionController::class, 'checkAccess']);
 
     Route::get('/education-modules', [EducationModuleController::class, 'index']);
-  
+    
 });
 
 
