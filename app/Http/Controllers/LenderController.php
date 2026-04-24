@@ -29,6 +29,7 @@ class LenderController extends Controller
                 'emi'    => $product['emi'] ?? null,
                 'loan'   => $product['loan'] ?? null,
                 'tenure' => $product['tenure'] ?? null,
+                'slug'   => str_replace(' ', '-', strtolower($lender->name)),
             ];
         });
 
