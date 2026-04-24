@@ -1,31 +1,24 @@
 <?php
+
 namespace App\Models;
+
 use MongoDB\Laravel\Eloquent\Model;
 
-class EducationModule extends Model
+class Banner extends Model
 {
     protected $connection = 'mongodb';
-    protected $collection = 'education_modules';
+    protected $collection = 'banners';
 
     protected $fillable = [
-        'course_id',
         'title',
-        'slug',
-        'description',
+        'image',
+        'link',
         'order',
         'status',
-        'image',
-        'color_code'
     ];
+
     protected $appends = ['image_url'];
-    public function contents()
-    {
-        return $this->hasMany(EducationContent::class, 'module_id');
-    }
-    public function course()
-    {
-        return $this->belongsTo(Course::class, 'course_id');
-    }
+
     public function getImageUrlAttribute()
     {
         if (!$this->image)

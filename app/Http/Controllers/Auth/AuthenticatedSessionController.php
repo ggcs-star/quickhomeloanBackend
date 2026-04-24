@@ -19,64 +19,103 @@ class AuthenticatedSessionController extends Controller
     {
         DB::beginTransaction();
 
-        try {
-            Log::info('Login attempt started', ['email' => $request->email]);
 
-            $request->validate([
+        $requestId = (string) Str::uuid();
+
+        try {
+
+
+            $validated = $request->validate([
                 'email' => 'required|email',
                 'password' => 'required'
             ]);
 
-            Log::info('Validation passed', ['email' => $request->email]);
 
-            $user = User::where('email', $request->email)->first();
+            $user = User::where('email', $validated['email'])->first();
 
             if (!$user) {
-                Log::warning('Login failed - user not found', ['email' => $request->email]);
+                Log::warning('Login failed: user not found', [
+                    'request_id' => $requestId,
+                    'email' => $validated['email']
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid credentials'
                 ], 401);
             }
 
-            if (!Hash::check($request->password, $user->password)) {
-                Log::warning('Login failed - password mismatch', ['email' => $request->email]);
+
+            if ($user->status !== 'active') {
+
+                $message = match ($user->status) {
+                    'inactive' => 'Your account is inactive. Please contact support.',
+                    'ban' => 'Your account has been banned.',
+                    default => 'Your account is not allowed to login.'
+                };
+
+                Log::warning('Login blocked: invalid status', [
+                    'request_id' => $requestId,
+                    'user_id' => $user->_id,
+                    'status' => $user->status
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $message
+                ], 403);
+            }
+
+
+            if (!Hash::check($validated['password'], $user->password)) {
+                Log::warning('Login failed: wrong password', [
+                    'request_id' => $requestId,
+                    'user_id' => $user->_id
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid credentials'
                 ], 401);
             }
+
 
             Auth::login($user);
-            Log::info('User authenticated', ['user_id' => $user->_id]);
+
 
             PersonalAccessToken::where('user_id', (string) $user->_id)->delete();
-            Log::info('Old personal access tokens deleted', ['user_id' => $user->_id]);
 
-            $token = Str::random(60);
+            $plainToken = Str::random(60);
 
             PersonalAccessToken::create([
                 'user_id' => (string) $user->_id,
                 'name' => 'api-token',
-                'token' => hash('sha256', $token),
+                'token' => hash('sha256', $plainToken),
             ]);
-
-            Log::info('New personal access token created', ['user_id' => $user->_id]);
 
             DB::commit();
 
-            Log::info('Login transaction committed successfully', ['user_id' => $user->_id]);
+
+            Log::info('Login successful', [
+                'request_id' => $requestId,
+                'user_id' => $user->_id
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Logged in successfully',
-                'user' => $user,
-                'token' => $token,
+                'user' => $user->makeHidden(['password']),
+                'token' => $plainToken,
             ], 200);
 
         } catch (ValidationException $e) {
             DB::rollBack();
-            Log::error('Validation failed', ['errors' => $e->errors()]);
+
+            Log::notice('Login validation failed', [
+                'request_id' => $requestId,
+                'errors' => $e->errors()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Validation Failed',
@@ -85,14 +124,15 @@ class AuthenticatedSessionController extends Controller
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Server error during login', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+
+            Log::error('Login server error', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage()
             ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Server Error',
-                'error' => $e->getMessage()
+                'message' => 'Server Error'
             ], 500);
         }
     }
