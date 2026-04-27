@@ -43,6 +43,7 @@ public function store(Request $request)
             'email'         => $request->email,
             'mobile_number' => $request->mobile_number,
             'password'      => Hash::make($request->password),
+            'status'        => 'active',
         ]);
 
         Log::info('User created successfully', ['user_id' => $user->_id]);

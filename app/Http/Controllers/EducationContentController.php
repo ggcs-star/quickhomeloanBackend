@@ -24,6 +24,16 @@ class EducationContentController extends Controller
     {
         $modules = EducationModule::where('course_id', $course_id)
             ->where('status', 1)
+            ->withCount([
+                'contents as total_contents' => function ($q) {
+                    $q->where('status', 1);
+                }
+            ])
+            ->withSum([
+                'contents as total_duration' => function ($q) {
+                    $q->where('status', 1);
+                }
+            ], 'duration')
             ->orderBy('order')
             ->get();
 
@@ -37,7 +47,8 @@ class EducationContentController extends Controller
     {
         $type = $request->type;
 
-        $query = EducationContent::where('module_id', $module_id)
+        $query = EducationContent::with('module')
+            ->where('module_id', $module_id)
             ->where('status', 1);
 
         if ($type) {
