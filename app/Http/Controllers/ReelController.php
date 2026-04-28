@@ -16,14 +16,30 @@ class ReelController extends Controller
     {
         $perPage = $request->per_page ?? 10;
 
+      
+        $user = auth()->user();
+
         $reels = Reel::where('is_active', 1)
             ->orderBy('_id', 'desc')
             ->paginate($perPage);
 
-        $reels->getCollection()->transform(function ($reel) {
+        $reels->getCollection()->transform(function ($reel) use ($user) {
+
             $data = $reel->toArray();
+
+
             $data['likes_count'] = $reel->likes()->count();
             $data['comments_count'] = $reel->comments()->count();
+
+
+            $data['is_liked'] = false;
+
+            if ($user) {
+                $data['is_liked'] = $reel->likes()
+                    ->where('user_id', (string) $user->_id)
+                    ->exists();
+            }
+
             return $data;
         });
 
