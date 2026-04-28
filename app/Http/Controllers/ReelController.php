@@ -16,7 +16,7 @@ class ReelController extends Controller
     {
         $perPage = $request->per_page ?? 10;
 
-      
+
         $user = auth()->user();
 
         $reels = Reel::where('is_active', 1)
@@ -131,13 +131,29 @@ class ReelController extends Controller
     }
     public function getComments($id)
     {
-        $comments = ReelComment::where('reel_id', $id)
+        $comments = ReelComment::with('user')
+            ->where('reel_id', $id)
             ->latest()
-            ->get(['user_id', 'comment', 'created_at']);
+            ->get();
+
+        $data = $comments->map(function ($comment) {
+
+            return [
+                'user_id' => $comment->user_id,
+                'user_name' => $comment->user->full_name ?? 'Unknown',
+                'comment' => $comment->comment,
+
+
+                'date' => $comment->created_at->format('d M Y'),
+
+
+                'time_ago' => $comment->created_at->diffForHumans(),
+            ];
+        });
 
         return response()->json([
             'status' => true,
-            'data' => $comments
+            'data' => $data
         ]);
     }
 }
