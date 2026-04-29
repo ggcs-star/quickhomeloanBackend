@@ -57,7 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/comment/{id}', [ReelController::class, 'getComments']);
     });
 
-  
+    Route::get('/banners', [BannerController::class, 'index']);
+    Route::get('/calculator-media/{slug}', [CalculatorController::class, 'getMedia']);
 });
 
 
@@ -65,4 +66,3 @@ Route::post('/razorpay/webhook', [SubscriptionController::class, 'webhook']);
 // Route::get('/education/audio', [EducationModuleController::class, 'audioModules']);
 // Route::get('/education/video', [EducationModuleController::class, 'videoModules']);
 
-  Route::get('/banners', [BannerController::class, 'index']);
