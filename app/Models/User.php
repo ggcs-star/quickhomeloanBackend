@@ -22,6 +22,7 @@ class User extends Authenticatable
         'city',
         'employment_type',
         'annual_income',
+        'status',
     ];
 
     protected $hidden = [
