@@ -80,6 +80,13 @@ class LoanController extends Controller
         try {
             $userId = auth()->id();
 
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
             $application = Loan::where('user_id', $userId)->first();
 
             if (!$application) {
@@ -120,7 +127,6 @@ class LoanController extends Controller
                 ]);
             }
 
-
             if ($step == 2) {
 
                 if ($application->step_completed < 1) {
@@ -154,7 +160,6 @@ class LoanController extends Controller
                 ]);
             }
 
-
             if ($step == 3) {
 
                 if ($application->step_completed < 2) {
@@ -185,17 +190,21 @@ class LoanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid step number'
-            ]);
+            ], 400);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Server error',
-                'error' => $e->getMessage()
+                'error' => app()->environment('local') ? $e->getMessage() : null
             ], 500);
         }
     }
-
-
 
 }
