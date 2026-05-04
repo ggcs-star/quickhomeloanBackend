@@ -15,6 +15,7 @@ use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\ReelController;
 use App\Http\Controllers\EducationContentController;
 use App\Http\Controllers\BannerController;
+use App\Http\Controllers\EventController;
 Route::get('/test', function () {
     return ['status' => 'API working'];
 });
@@ -59,6 +60,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/banners', [BannerController::class, 'index']);
     Route::get('/calculator-media/{slug}', [CalculatorController::class, 'getMedia']);
+
+
+
+    Route::get('/events', [EventController::class, 'index']);
+    Route::post('/events', [EventController::class, 'store']);
+    Route::get('/events/{id}', [EventController::class, 'show']);
+    Route::put('/events/{id}', [EventController::class, 'update']);
+    Route::delete('/events/{id}', [EventController::class, 'destroy']);
+    Route::post('/events/{id}/complete', [EventController::class, 'markComplete']);
 });
 
 
