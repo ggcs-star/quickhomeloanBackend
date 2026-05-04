@@ -14,20 +14,22 @@ class Event extends Model
         'type',            // event | task
         'title',
         'description',
-        'event_date',
-        'start_time',
-        'end_time',
+
+        'start_datetime',  // event start
+        'end_datetime',    // event end
+
         'is_all_day',
+
         'reminder_time',
         'repeat_type',     // none | daily | weekly | monthly | yearly
-        'is_completed',    // for task
+
+        'is_completed',
         'is_notified',
     ];
 
     protected $casts = [
-        'event_date' => 'datetime',
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
+        'start_datetime' => 'datetime',
+        'end_datetime' => 'datetime',
         'reminder_time' => 'datetime',
         'is_all_day' => 'boolean',
         'is_completed' => 'boolean',
