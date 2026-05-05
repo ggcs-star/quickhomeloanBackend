@@ -16,6 +16,8 @@ use App\Http\Controllers\ReelController;
 use App\Http\Controllers\EducationContentController;
 use App\Http\Controllers\BannerController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\LoanInquiryController;
+use App\Http\Controllers\ContactInquiryController;
 Route::get('/test', function () {
     return ['status' => 'API working'];
 });
@@ -76,3 +78,21 @@ Route::post('/razorpay/webhook', [SubscriptionController::class, 'webhook']);
 // Route::get('/education/audio', [EducationModuleController::class, 'audioModules']);
 // Route::get('/education/video', [EducationModuleController::class, 'videoModules']);
 
+Route::prefix('loan-inquiries')->group(function () {
+
+    Route::post('/', [LoanInquiryController::class, 'store']);     // create
+    Route::get('/', [LoanInquiryController::class, 'index']);      // list
+    Route::get('/{id}', [LoanInquiryController::class, 'show']);   // single
+    Route::delete('/{id}', [LoanInquiryController::class, 'destroy']); // delete
+
+});
+
+
+Route::prefix('contact')->group(function () {
+
+    Route::post('/', [ContactInquiryController::class, 'store']);     // submit form
+    Route::get('/', [ContactInquiryController::class, 'index']);      // list (admin)
+    Route::get('/{id}', [ContactInquiryController::class, 'show']);   // single
+    Route::delete('/{id}', [ContactInquiryController::class, 'destroy']); // delete
+
+});
