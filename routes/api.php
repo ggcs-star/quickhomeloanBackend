@@ -18,6 +18,7 @@ use App\Http\Controllers\BannerController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\LoanInquiryController;
 use App\Http\Controllers\ContactInquiryController;
+use App\Http\Controllers\CommunityController;
 Route::get('/test', function () {
     return ['status' => 'API working'];
 });
@@ -58,6 +59,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/like/{id}', [ReelController::class, 'toggleLike']);
         Route::post('/comment/{id}', [ReelController::class, 'addComment']);
         Route::get('/comment/{id}', [ReelController::class, 'getComments']);
+    });
+      Route::prefix('community')->group(function () {
+        Route::get('/posts', [CommunityController::class, 'getPosts']);
+        Route::get('/posts/{id}', [CommunityController::class, 'getPost']);
+        Route::post('/posts', [CommunityController::class, 'createPost']);
+        Route::post('/posts/{id}/like', [CommunityController::class, 'toggleLike']);
+        Route::post('/posts/{id}/share', [CommunityController::class, 'sharePost']);
+        Route::post('/posts/{id}/save', [CommunityController::class, 'toggleSave']);
+        Route::get('/saved', [CommunityController::class, 'getSavedPosts']);
+        Route::post('/comments', [CommunityController::class, 'storeComment']);
+        Route::post('/comments/{id}/like', [CommunityController::class, 'toggleCommentLike']);
+        Route::delete('/comments/{id}', [CommunityController::class, 'deleteComment']);
     });
 
     Route::get('/banners', [BannerController::class, 'index']);
