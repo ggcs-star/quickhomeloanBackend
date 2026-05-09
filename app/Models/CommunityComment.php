@@ -7,7 +7,10 @@ use MongoDB\Laravel\Eloquent\Model;
 class CommunityComment extends Model
 {
     protected $connection = 'mongodb';
+
     protected $collection = 'community_comments';
+
+    public $timestamps = true;
 
     protected $fillable = [
         'post_id',
@@ -23,17 +26,9 @@ class CommunityComment extends Model
 
     protected $casts = [
         'is_admin_reply' => 'boolean',
-        'likes' => 'array'
+        'likes' => 'array',
+        'likes_count' => 'integer'
     ];
-    public $post_id;
-public $user_id;
-public $user_name;
-public $user_photo;
-public $comment;
-public $is_admin_reply;
-public $parent_id;
-public $likes;
-public $likes_count;
 
     public function post()
     {
