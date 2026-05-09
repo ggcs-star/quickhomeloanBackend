@@ -8,7 +8,7 @@ class CommunityPost extends Model
 {
     protected $connection = 'mongodb';
     protected $collection = 'community_posts';
-
+    public $timestamps = true;
     protected $fillable = [
         'user_id',
         'user_name',
@@ -26,21 +26,14 @@ class CommunityPost extends Model
     protected $casts = [
         'likes' => 'array',
         'shares' => 'array',
-        'saved_by' => 'array'
+        'saved_by' => 'array',
+        'likes_count' => 'integer',
+        'shares_count' => 'integer',
+        'saved_count' => 'integer',
+        'comments_count' => 'integer'
     ];
 
-    // Yeh properties add karo red line hatane ke liye
-    public $user_id;
-    public $user_name;
-    public $user_photo;
-    public $content;
-    public $likes;
-    public $likes_count;
-    public $shares;
-    public $shares_count;
-    public $saved_by;
-    public $saved_count;
-    public $comments_count;
+    
 
     public function comments()
     {

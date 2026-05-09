@@ -11,12 +11,19 @@ class CommunityController extends Controller
     public function getPosts(Request $request)
     {
         $posts = CommunityPost::orderBy('created_at', 'desc')->paginate(20);
-        
+
         foreach ($posts as $post) {
-            $post->is_liked_by_user = in_array((string)$request->user()->_id, $post->likes ?? []);
-            $post->is_saved_by_user = in_array((string)$request->user()->_id, $post->saved_by ?? []);
+            $post->is_liked_by_user = in_array(
+                (string)$request->user()->_id,
+                $post->likes ?? []
+            );
+
+            $post->is_saved_by_user = in_array(
+                (string)$request->user()->_id,
+                $post->saved_by ?? []
+            );
         }
-        
+
         return response()->json([
             'status' => true,
             'message' => 'Posts fetched successfully',
@@ -27,14 +34,21 @@ class CommunityController extends Controller
     public function getPost($id, Request $request)
     {
         $post = CommunityPost::findOrFail($id);
-        
+
         $comments = CommunityComment::where('post_id', $id)
             ->orderBy('created_at', 'asc')
             ->get();
-        
-        $post->is_liked_by_user = in_array((string)$request->user()->_id, $post->likes ?? []);
-        $post->is_saved_by_user = in_array((string)$request->user()->_id, $post->saved_by ?? []);
-        
+
+        $post->is_liked_by_user = in_array(
+            (string)$request->user()->_id,
+            $post->likes ?? []
+        );
+
+        $post->is_saved_by_user = in_array(
+            (string)$request->user()->_id,
+            $post->saved_by ?? []
+        );
+
         return response()->json([
             'status' => true,
             'message' => 'Post fetched successfully',
@@ -45,6 +59,7 @@ class CommunityController extends Controller
         ]);
     }
 
+    // CREATE POST
     public function createPost(Request $request)
     {
         $request->validate([
@@ -52,22 +67,25 @@ class CommunityController extends Controller
         ]);
 
         $user = $request->user();
-        $contentText = $request->input('content');
 
-        $post = new CommunityPost();
-        $post->user_id = (string)$user->_id;
-        $post->user_name = $user->full_name ?? 'User';
-        $post->user_photo = $user->profile_photo ?? null;
-        $post->content = $contentText;
-        $post->likes = [];
-        $post->likes_count = 0;
-        $post->shares = [];
-        $post->shares_count = 0;
-        $post->saved_by = [];
-        $post->saved_count = 0;
-        $post->comments_count = 0;
-        $post->save();
-        
+        $post = CommunityPost::create([
+            'user_id' => (string)$user->_id,
+            'user_name' => $user->full_name ?? $user->name ?? 'User',
+            'user_photo' => $user->profile_photo ?? null,
+            'content' => $request->input('content'),
+
+            'likes' => [],
+            'likes_count' => 0,
+
+            'shares' => [],
+            'shares_count' => 0,
+
+            'saved_by' => [],
+            'saved_count' => 0,
+
+            'comments_count' => 0,
+        ]);
+
         return response()->json([
             'status' => true,
             'message' => 'Post created successfully',
@@ -75,22 +93,40 @@ class CommunityController extends Controller
         ], 201);
     }
 
+    // LIKE POST
     public function toggleLike($id, Request $request)
     {
         $post = CommunityPost::findOrFail($id);
+
         $userId = (string)$request->user()->_id;
-        
+
         if (in_array($userId, $post->likes ?? [])) {
-            $post->likes = array_values(array_diff($post->likes ?? [], [$userId]));
-            $post->likes_count = ($post->likes_count ?? 0) - 1;
+
+            $post->likes = array_values(
+                array_diff($post->likes ?? [], [$userId])
+            );
+
+            $post->likes_count = max(
+                0,
+                ($post->likes_count ?? 0) - 1
+            );
+
             $liked = false;
+
         } else {
-            $post->likes = array_merge($post->likes ?? [], [$userId]);
+
+            $post->likes = array_merge(
+                $post->likes ?? [],
+                [$userId]
+            );
+
             $post->likes_count = ($post->likes_count ?? 0) + 1;
+
             $liked = true;
         }
+
         $post->save();
-        
+
         return response()->json([
             'status' => true,
             'message' => $liked ? 'Post liked' : 'Post unliked',
@@ -101,17 +137,25 @@ class CommunityController extends Controller
         ]);
     }
 
+    // SHARE POST
     public function sharePost($id, Request $request)
     {
         $post = CommunityPost::findOrFail($id);
+
         $userId = (string)$request->user()->_id;
-        
+
         if (!in_array($userId, $post->shares ?? [])) {
-            $post->shares = array_merge($post->shares ?? [], [$userId]);
+
+            $post->shares = array_merge(
+                $post->shares ?? [],
+                [$userId]
+            );
+
             $post->shares_count = ($post->shares_count ?? 0) + 1;
+
             $post->save();
         }
-        
+
         return response()->json([
             'status' => true,
             'message' => 'Post shared successfully',
@@ -121,22 +165,40 @@ class CommunityController extends Controller
         ]);
     }
 
+    // SAVE POST
     public function toggleSave($id, Request $request)
     {
         $post = CommunityPost::findOrFail($id);
+
         $userId = (string)$request->user()->_id;
-        
+
         if (in_array($userId, $post->saved_by ?? [])) {
-            $post->saved_by = array_values(array_diff($post->saved_by ?? [], [$userId]));
-            $post->saved_count = ($post->saved_count ?? 0) - 1;
+
+            $post->saved_by = array_values(
+                array_diff($post->saved_by ?? [], [$userId])
+            );
+
+            $post->saved_count = max(
+                0,
+                ($post->saved_count ?? 0) - 1
+            );
+
             $saved = false;
+
         } else {
-            $post->saved_by = array_merge($post->saved_by ?? [], [$userId]);
+
+            $post->saved_by = array_merge(
+                $post->saved_by ?? [],
+                [$userId]
+            );
+
             $post->saved_count = ($post->saved_count ?? 0) + 1;
+
             $saved = true;
         }
+
         $post->save();
-        
+
         return response()->json([
             'status' => true,
             'message' => $saved ? 'Post saved' : 'Post unsaved',
@@ -147,14 +209,15 @@ class CommunityController extends Controller
         ]);
     }
 
+    // SAVED POSTS
     public function getSavedPosts(Request $request)
     {
         $userId = (string)$request->user()->_id;
-        
+
         $posts = CommunityPost::where('saved_by', 'all', [$userId])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
-        
+
         return response()->json([
             'status' => true,
             'message' => 'Saved posts fetched successfully',
@@ -162,30 +225,44 @@ class CommunityController extends Controller
         ]);
     }
 
+    // STORE COMMENT
     public function storeComment(Request $request)
     {
         $request->validate([
             'post_id' => 'required',
             'comment' => 'required|string'
         ]);
-        
-        $user = $request->user();
-        $commentText = $request->comment;
 
-        $comment = new CommunityComment();
-        $comment->post_id = $request->post_id;
-        $comment->user_id = (string)$user->_id;
-        $comment->user_name = $user->full_name ?? 'User';
-        $comment->user_photo = $user->profile_photo ?? null;
-        $comment->comment = $commentText;
-        $comment->is_admin_reply = false;
-        $comment->parent_id = $request->parent_id ?? null;
-        $comment->likes = [];
-        $comment->likes_count = 0;
-        $comment->save();
-        
-        CommunityPost::where('_id', $request->post_id)->increment('comments_count');
-        
+        $user = $request->user();
+
+        $comment = CommunityComment::create([
+            'post_id' => $request->input('post_id'),
+
+            'user_id' => (string)$user->_id,
+
+            'user_name' => $user->full_name ?? $user->name ?? 'User',
+
+            'user_photo' => $user->profile_photo ?? null,
+
+            'comment' => $request->input('comment'),
+
+            'is_admin_reply' => false,
+
+            'parent_id' => $request->input('parent_id'),
+
+            'likes' => [],
+
+            'likes_count' => 0,
+        ]);
+
+        // Update comment count
+        $post = CommunityPost::find($request->input('post_id'));
+
+        if ($post) {
+            $post->comments_count = ($post->comments_count ?? 0) + 1;
+            $post->save();
+        }
+
         return response()->json([
             'status' => true,
             'message' => 'Comment added successfully',
@@ -193,22 +270,40 @@ class CommunityController extends Controller
         ], 201);
     }
 
+    // LIKE COMMENT
     public function toggleCommentLike($id, Request $request)
     {
         $comment = CommunityComment::findOrFail($id);
+
         $userId = (string)$request->user()->_id;
-        
+
         if (in_array($userId, $comment->likes ?? [])) {
-            $comment->likes = array_values(array_diff($comment->likes ?? [], [$userId]));
-            $comment->likes_count = ($comment->likes_count ?? 0) - 1;
+
+            $comment->likes = array_values(
+                array_diff($comment->likes ?? [], [$userId])
+            );
+
+            $comment->likes_count = max(
+                0,
+                ($comment->likes_count ?? 0) - 1
+            );
+
             $liked = false;
+
         } else {
-            $comment->likes = array_merge($comment->likes ?? [], [$userId]);
+
+            $comment->likes = array_merge(
+                $comment->likes ?? [],
+                [$userId]
+            );
+
             $comment->likes_count = ($comment->likes_count ?? 0) + 1;
+
             $liked = true;
         }
+
         $comment->save();
-        
+
         return response()->json([
             'status' => true,
             'message' => $liked ? 'Comment liked' : 'Comment unliked',
@@ -219,12 +314,24 @@ class CommunityController extends Controller
         ]);
     }
 
-    public function deleteComment($id, Request $request)
+    // DELETE COMMENT
+    public function deleteComment($id)
     {
         $comment = CommunityComment::findOrFail($id);
-        CommunityPost::where('_id', $comment->post_id)->decrement('comments_count');
+
+        $post = CommunityPost::find($comment->post_id);
+
+        if ($post) {
+            $post->comments_count = max(
+                0,
+                ($post->comments_count ?? 0) - 1
+            );
+
+            $post->save();
+        }
+
         $comment->delete();
-        
+
         return response()->json([
             'status' => true,
             'message' => 'Comment deleted successfully'
