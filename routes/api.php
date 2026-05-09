@@ -19,6 +19,8 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\LoanInquiryController;
 use App\Http\Controllers\ContactInquiryController;
 use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\PodcastController;
+
 Route::get('/test', function () {
     return ['status' => 'API working'];
 });
@@ -71,6 +73,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/comments', [CommunityController::class, 'storeComment']);
         Route::post('/comments/{id}/like', [CommunityController::class, 'toggleCommentLike']);
         Route::delete('/comments/{id}', [CommunityController::class, 'deleteComment']);
+    });
+
+    Route::prefix('podcasts')->group(function () {
+        Route::get('/', [PodcastController::class, 'getPodcasts']);
+        Route::get('/featured', [PodcastController::class, 'getFeaturedPodcasts']);
+        Route::get('/{id}', [PodcastController::class, 'getPodcast']);
     });
 
     Route::get('/banners', [BannerController::class, 'index']);
