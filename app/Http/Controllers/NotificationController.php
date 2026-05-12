@@ -12,9 +12,10 @@ use Exception;
 
 class NotificationController extends Controller
 {
-    public function saveToken(Request $request)
+   public function saveToken(Request $request)
     {
         try {
+
             $request->validate([
                 'fcm_token' => 'required|string',
                 'device' => 'nullable|string',
@@ -22,36 +23,23 @@ class NotificationController extends Controller
 
             $user = auth()->user();
 
-            // Guest user (not logged in)
             if (!$user) {
-                FcmToken::updateOrCreate(
-                    ['token' => $request->fcm_token],
-                    [
-                        'user_id' => null,
-                        'device_type' => $request->device ?? 'android',
-                        'last_used_at' => now(),
-                    ]
-                );
-
-                Log::info('Guest FCM Token saved: ' . $request->fcm_token);
-
                 return response()->json([
-                    'status' => true,
-                    'message' => 'FCM token saved as guest',
-                ], 200);
+                    'status' => false,
+                    'message' => 'Unauthorized user',
+                ], 401);
             }
 
-            // Logged in user
             FcmToken::updateOrCreate(
-                ['token' => $request->fcm_token],
+                [
+                    'token' => $request->fcm_token,
+                ],
                 [
                     'user_id' => $user->id,
-                    'device_type' => $request->device ?? 'android',
+                    'device_type' => $request->device ?? 'web',
                     'last_used_at' => now(),
                 ]
             );
-
-            Log::info('FCM Token saved for user: ' . $user->id);
 
             return response()->json([
                 'status' => true,
@@ -59,69 +47,22 @@ class NotificationController extends Controller
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors(),
             ], 422);
-        } catch (Exception $e) {
-            Log::error('FCM Token Save Error: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'Something went wrong: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
 
-    // 🔴 NEW FUNCTION - Login ke baad token attach karne ke liye
-    public function attachTokenToUser(Request $request)
-    {
-        try {
-            $request->validate([
-                'fcm_token' => 'required|string',
+        } catch (Exception $e) {
+
+            Log::error('FCM Token Save Error', [
+                'error' => $e->getMessage(),
             ]);
 
-            $user = auth()->user();
-            
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'User not logged in',
-                ], 401);
-            }
-
-            $updated = FcmToken::where('token', $request->fcm_token)
-                ->update([
-                    'user_id' => $user->id,
-                    'last_used_at' => now(),
-                ]);
-
-            if ($updated) {
-                Log::info('Token attached to user: ' . $user->id);
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Token attached to user successfully',
-                ], 200);
-            } else {
-                // Token doesn't exist, create new
-                FcmToken::create([
-                    'token' => $request->fcm_token,
-                    'user_id' => $user->id,
-                    'device_type' => 'android',
-                    'last_used_at' => now(),
-                ]);
-                
-                return response()->json([
-                    'status' => true,
-                    'message' => 'New token created and attached to user',
-                ], 200);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Attach token error: ' . $e->getMessage());
             return response()->json([
                 'status' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Something went wrong',
             ], 500);
         }
     }
