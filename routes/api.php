@@ -111,9 +111,14 @@ Route::prefix('loan-inquiries')->group(function () {
 
 Route::prefix('contact')->group(function () {
 
-    Route::post('/', [ContactInquiryController::class, 'store']);     // submit form
-    Route::get('/', [ContactInquiryController::class, 'index']);      // list (admin)
-    Route::get('/{id}', [ContactInquiryController::class, 'show']);   // single
-    Route::delete('/{id}', [ContactInquiryController::class, 'destroy']); // delete
+    Route::post('/', [ContactInquiryController::class, 'store']);    
+    Route::get('/', [ContactInquiryController::class, 'index']);      
+    Route::get('/{id}', [ContactInquiryController::class, 'show']);  
+    Route::delete('/{id}', [ContactInquiryController::class, 'destroy']); 
 
 });
+
+Route::post('/fcm/save-token', [NotificationController::class, 'saveToken']);
+Route::post('/fcm/attach-token-to-user', [NotificationController::class, 'attachTokenToUser']); 
+Route::post('/fcm/notify-all', [NotificationController::class, 'notifyAll']);
+Route::get('/fcm/history', [NotificationController::class, 'getHistory']);

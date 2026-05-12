@@ -7,13 +7,14 @@ use App\Models\FcmToken;
 use Illuminate\Support\Facades\Http;
 use Google\Client as GoogleClient;
 use Illuminate\Support\Facades\Log;
+use App\Models\NotificationHistory;
 use Exception;
+
 class NotificationController extends Controller
 {
     public function saveToken(Request $request)
     {
         try {
-
             $request->validate([
                 'fcm_token' => 'required|string',
                 'device' => 'nullable|string',
@@ -21,23 +22,36 @@ class NotificationController extends Controller
 
             $user = auth()->user();
 
+            // Guest user (not logged in)
             if (!$user) {
+                FcmToken::updateOrCreate(
+                    ['token' => $request->fcm_token],
+                    [
+                        'user_id' => null,
+                        'device_type' => $request->device ?? 'android',
+                        'last_used_at' => now(),
+                    ]
+                );
+
+                Log::info('Guest FCM Token saved: ' . $request->fcm_token);
+
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthorized user',
-                ], 401);
+                    'status' => true,
+                    'message' => 'FCM token saved as guest',
+                ], 200);
             }
 
+            // Logged in user
             FcmToken::updateOrCreate(
-                [
-                    'token' => $request->fcm_token,
-                ],
+                ['token' => $request->fcm_token],
                 [
                     'user_id' => $user->id,
-                    'device_type' => $request->device ?? 'web',
+                    'device_type' => $request->device ?? 'android',
                     'last_used_at' => now(),
                 ]
             );
+
+            Log::info('FCM Token saved for user: ' . $user->id);
 
             return response()->json([
                 'status' => true,
@@ -45,36 +59,89 @@ class NotificationController extends Controller
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors(),
             ], 422);
-
         } catch (Exception $e) {
-
-            Log::error('FCM Token Save Error', [
-                'error' => $e->getMessage(),
-            ]);
-
+            Log::error('FCM Token Save Error: ' . $e->getMessage());
             return response()->json([
                 'status' => false,
-                'message' => 'Something went wrong',
+                'message' => 'Something went wrong: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // 🔴 NEW FUNCTION - Login ke baad token attach karne ke liye
+    public function attachTokenToUser(Request $request)
+    {
+        try {
+            $request->validate([
+                'fcm_token' => 'required|string',
+            ]);
+
+            $user = auth()->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'User not logged in',
+                ], 401);
+            }
+
+            $updated = FcmToken::where('token', $request->fcm_token)
+                ->update([
+                    'user_id' => $user->id,
+                    'last_used_at' => now(),
+                ]);
+
+            if ($updated) {
+                Log::info('Token attached to user: ' . $user->id);
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Token attached to user successfully',
+                ], 200);
+            } else {
+                // Token doesn't exist, create new
+                FcmToken::create([
+                    'token' => $request->fcm_token,
+                    'user_id' => $user->id,
+                    'device_type' => 'android',
+                    'last_used_at' => now(),
+                ]);
+                
+                return response()->json([
+                    'status' => true,
+                    'message' => 'New token created and attached to user',
+                ], 200);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Attach token error: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Error: ' . $e->getMessage(),
             ], 500);
         }
     }
 
     protected function getFcmAccessToken(): string
     {
-        $serviceAccountPath = base_path(env('FIREBASE_SERVICE_ACCOUNT'));
+        $serviceAccountPath = env('FIREBASE_SERVICE_ACCOUNT');
+        
+        if (!$serviceAccountPath) {
+            throw new \Exception('FIREBASE_SERVICE_ACCOUNT path not set in .env');
+        }
+        
+        $fullPath = base_path($serviceAccountPath);
 
-        if (!file_exists($serviceAccountPath)) {
-            throw new \Exception('Firebase service account file not found at: ' . $serviceAccountPath);
+        if (!file_exists($fullPath)) {
+            throw new \Exception('Firebase service account file not found at: ' . $fullPath);
         }
 
         $client = new GoogleClient();
-        $client->setAuthConfig($serviceAccountPath);
+        $client->setAuthConfig($fullPath);
         $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
 
         $tokenArray = $client->fetchAccessTokenWithAssertion();
@@ -91,6 +158,10 @@ class NotificationController extends Controller
         $request->validate([
             'title' => 'required|string',
             'body' => 'required|string',
+            'image_url' => 'nullable|string',
+            'send_to' => 'nullable|string',
+            'user_ids' => 'nullable|array',
+            'user_names' => 'nullable|array',
         ]);
 
         $projectId = env('FIREBASE_PROJECT_ID');
@@ -98,14 +169,21 @@ class NotificationController extends Controller
             return response()->json(['status' => false, 'message' => 'FIREBASE_PROJECT_ID missing in .env'], 500);
         }
 
-        $tokens = FcmToken::pluck('token')->unique();
-        if ($tokens->isEmpty()) {
-            return response()->json(['status' => false, 'message' => 'No FCM tokens found.']);
+        // Get tokens based on selection
+        if ($request->send_to == 'specific' && !empty($request->user_ids)) {
+            $tokens = FcmToken::whereIn('user_id', $request->user_ids)->pluck('token')->unique()->toArray();
+        } else {
+            $tokens = FcmToken::whereNotNull('token')->pluck('token')->unique()->toArray();
+        }
+
+        if (empty($tokens)) {
+            return response()->json(['status' => false, 'message' => 'No FCM tokens found.'], 404);
         }
 
         try {
             $accessToken = $this->getFcmAccessToken();
         } catch (\Exception $e) {
+            Log::error('FCM Access Token Error: ' . $e->getMessage());
             return response()->json(['status' => false, 'message' => 'Access token error: ' . $e->getMessage()], 500);
         }
 
@@ -114,7 +192,6 @@ class NotificationController extends Controller
         $successCount = 0;
         $failCount = 0;
         $invalidTokens = [];
-        $errors = [];
 
         foreach ($tokens as $token) {
             $payload = [
@@ -124,23 +201,21 @@ class NotificationController extends Controller
                         'title' => $request->title,
                         'body' => $request->body,
                     ],
-
                 ],
             ];
 
-            $response = Http::withToken($accessToken)
-                ->post($url, $payload);
+            if ($request->image_url) {
+                $payload['message']['notification']['image'] = $request->image_url;
+            }
 
+            $response = Http::withToken($accessToken)->post($url, $payload);
             $body = $response->json();
 
             if ($response->successful()) {
                 $successCount++;
             } else {
                 $failCount++;
-                $errors[] = ['token' => $token, 'response' => $body];
-
                 $status = $body['error']['status'] ?? null;
-
                 if ($status && in_array($status, ['NOT_FOUND', 'INVALID_ARGUMENT', 'UNREGISTERED'])) {
                     FcmToken::where('token', $token)->delete();
                     $invalidTokens[] = $token;
@@ -148,18 +223,44 @@ class NotificationController extends Controller
             }
         }
 
+        // Save to history
+        try {
+            NotificationHistory::create([
+                'title' => $request->title,
+                'body' => $request->body,
+                'image_url' => $request->image_url,
+                'send_to' => $request->send_to ?? 'all',
+                'user_ids' => $request->user_ids ?? [],
+                'user_names' => $request->user_names ?? [],
+                'total_receivers' => count($tokens),
+                'success_count' => $successCount,
+                'fail_count' => $failCount,
+                'sent_by' => auth()->id(),
+                'sent_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to save notification history: ' . $e->getMessage());
+        }
+
         return response()->json([
             'status' => true,
-            'message' => 'Broadcast completed (HTTP v1)',
+            'message' => 'Broadcast completed',
             'summary' => [
-                'total_tokens' => $tokens->count(),
+                'total_tokens' => count($tokens),
                 'successfully_sent' => $successCount,
                 'failed' => $failCount,
                 'invalid_tokens_removed' => $invalidTokens,
-                'errors' => $errors,
             ],
         ]);
     }
 
-
+    public function getHistory(Request $request)
+    {
+        $histories = NotificationHistory::orderBy('sent_at', 'desc')->limit(100)->get();
+        
+        return response()->json([
+            'status' => true,
+            'data' => $histories
+        ]);
+    }
 }
