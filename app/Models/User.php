@@ -34,4 +34,15 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+   
+
+public function fcmTokens()
+{
+    return $this->hasMany(FcmToken::class, 'user_id');
+}
+
+public function sentNotifications()
+{
+    return $this->hasMany(NotificationHistory::class, 'sent_by');
+}
 }
