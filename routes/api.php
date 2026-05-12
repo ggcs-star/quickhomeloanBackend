@@ -125,7 +125,6 @@ Route::prefix('contact')->group(function () {
 
 });
 
-Route::post('/fcm/save-token', [NotificationController::class, 'saveToken']);
-Route::post('/fcm/attach-token-to-user', [NotificationController::class, 'attachTokenToUser']); 
+Route::post('/fcm/save-token', [NotificationController::class, 'saveToken']); 
 Route::post('/fcm/notify-all', [NotificationController::class, 'notifyAll']);
 Route::get('/fcm/history', [NotificationController::class, 'getHistory']);
