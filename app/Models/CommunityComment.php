@@ -24,11 +24,7 @@ class CommunityComment extends Model
         'likes_count'
     ];
 
-    protected $casts = [
-        'is_admin_reply' => 'boolean',
-        'likes' => 'array',
-        'likes_count' => 'integer'
-    ];
+   
 
     public function post()
     {
