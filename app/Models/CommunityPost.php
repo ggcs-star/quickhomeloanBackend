@@ -23,16 +23,7 @@ class CommunityPost extends Model
         'comments_count'
     ];
 
-    protected $casts = [
-        'likes' => 'array',
-        'shares' => 'array',
-        'saved_by' => 'array',
-        'likes_count' => 'integer',
-        'shares_count' => 'integer',
-        'saved_count' => 'integer',
-        'comments_count' => 'integer'
-    ];
-
+  
     
 
     public function comments()
