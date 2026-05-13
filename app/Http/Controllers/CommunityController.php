@@ -60,38 +60,46 @@ class CommunityController extends Controller
     }
 
     // CREATE POST
-    public function createPost(Request $request)
-    {
-        $request->validate([
-            'content' => 'required|string'
-        ]);
+  public function createPost(Request $request)
+{
+    $request->validate([
+        'content' => 'required|string'
+    ]);
 
-        $user = $request->user();
+    $user = $request->user();
 
-        $post = CommunityPost::create([
-            'user_id' => (string)$user->_id,
-            'user_name' => $user->full_name ?? $user->name ?? 'User',
-            'user_photo' => $user->profile_photo ?? null,
-            'content' => $request->input('content'),
+    $post = CommunityPost::create([
+        'user_id' => (string)$user->_id,
 
-            'likes' => [],
-            'likes_count' => 0,
+        'user_name' =>
+            $user->full_name
+            ?? $user->name
+            ?? 'User',
 
-            'shares' => [],
-            'shares_count' => 0,
+        'user_photo' =>
+            $user->profile_photo ?? null,
 
-            'saved_by' => [],
-            'saved_count' => 0,
+        'content' =>
+            $request->input('content'),
 
-            'comments_count' => 0,
-        ]);
+        'likes' => (array) [],
+        'likes_count' => 0,
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Post created successfully',
-            'data' => $post
-        ], 201);
-    }
+        'shares' => (array) [],
+        'shares_count' => 0,
+
+        'saved_by' => (array) [],
+        'saved_count' => 0,
+
+        'comments_count' => 0,
+    ]);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Post created successfully',
+        'data' => $post
+    ], 201);
+}
 
     // LIKE POST
     public function toggleLike($id, Request $request)
@@ -166,20 +174,19 @@ class CommunityController extends Controller
     }
 
     // SAVE POST
-  public function toggleSave($id, Request $request)
+public function toggleSave($id, Request $request)
 {
     $post = CommunityPost::findOrFail($id);
 
     $userId = (string)$request->user()->_id;
 
-    if (in_array($userId, $post->saved_by ?? [])) {
+    $savedBy = $post->saved_by ?? [];
+
+    if (in_array($userId, $savedBy)) {
 
         // UNSAVE
         $post->saved_by = array_values(
-            array_diff(
-                $post->saved_by ?? [],
-                [$userId]
-            )
+            array_diff($savedBy, [$userId])
         );
 
         $post->saved_count = max(
@@ -192,13 +199,11 @@ class CommunityController extends Controller
     } else {
 
         // SAVE
-        $post->saved_by = collect(
-            $post->saved_by ?? []
-        )
-        ->push($userId)
-        ->unique()
-        ->values()
-        ->toArray();
+        $savedBy[] = $userId;
+
+        $post->saved_by = array_values(
+            array_unique($savedBy)
+        );
 
         $post->saved_count =
             ($post->saved_count ?? 0) + 1;
@@ -221,15 +226,14 @@ class CommunityController extends Controller
         ]
     ]);
 }
-  public function getSavedPosts(Request $request)
+public function getSavedPosts(Request $request)
 {
     $userId = (string)$request->user()->_id;
 
-    $posts = CommunityPost::whereRaw([
-        'saved_by' => [
-            '$in' => [$userId]
-        ]
-    ])
+    $posts = CommunityPost::where(
+        'saved_by',
+        $userId
+    )
     ->orderBy('created_at', 'desc')
     ->paginate(20);
 
