@@ -41,8 +41,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/edit-profile', [UserProfileController::class, 'update']);
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
     Route::post('/fcm/save-token', [NotificationController::class, 'saveToken']);
-    Route::post('/fcm/notify-all', [NotificationController::class, 'notifyAll']);
-    Route::get('/fcm/history', [NotificationController::class, 'getHistory']);
+    Route::get('/user-notifications', [NotificationController::class, 'userNotifications']);
+    Route::get('/user-notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/user-notifications/read/{id}', [NotificationController::class, 'markRead']);
     Route::post('/loan/submit-form', [LoanController::class, 'store']);
     Route::get('/loan/submit-form', [LoanController::class, 'show']);
 
@@ -126,3 +127,5 @@ Route::prefix('contact')->group(function () {
 
 });
 
+ Route::post('/fcm/notify-all', [NotificationController::class, 'notifyAll']);
+    Route::get('/fcm/history', [NotificationController::class, 'getHistory']);
