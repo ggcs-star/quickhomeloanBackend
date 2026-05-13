@@ -175,4 +175,32 @@ public function checkAccess()
         ], 500);
     }
 }
+// PAYMENT HISTORY
+public function paymentHistory()
+{
+    try {
+
+        $payments = UserPayment::where('user_id', auth()->id())
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Payment history fetched successfully',
+            'data' => $payments
+        ]);
+
+    } catch (\Exception $e) {
+
+        Log::error('Payment History Error', [
+            'message' => $e->getMessage(),
+            'user_id' => auth()->id()
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Unable to fetch payment history'
+        ], 500);
+    }
+}
 }

@@ -337,4 +337,49 @@ class CommunityController extends Controller
             'message' => 'Comment deleted successfully'
         ]);
     }
+    // MY POSTS
+public function myPosts(Request $request)
+{
+    $userId = (string)$request->user()->_id;
+
+    $posts = CommunityPost::where('user_id', $userId)
+        ->orderBy('created_at', 'desc')
+        ->paginate(20);
+
+    foreach ($posts as $post) {
+
+        $post->is_liked_by_user = in_array(
+            $userId,
+            $post->likes ?? []
+        );
+
+        $post->is_saved_by_user = in_array(
+            $userId,
+            $post->saved_by ?? []
+        );
+    }
+
+    return response()->json([
+        'status' => true,
+        'message' => 'My posts fetched successfully',
+        'data' => $posts
+    ]);
+}
+
+
+// MY COMMENTS
+public function myComments(Request $request)
+{
+    $userId = (string)$request->user()->_id;
+
+    $comments = CommunityComment::where('user_id', $userId)
+        ->orderBy('created_at', 'desc')
+        ->paginate(20);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'My comments fetched successfully',
+        'data' => $comments
+    ]);
+}
 }

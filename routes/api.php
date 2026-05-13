@@ -46,8 +46,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/loan/submit-form', [LoanController::class, 'store']);
     Route::get('/loan/submit-form', [LoanController::class, 'show']);
 
-    Route::post('/create-subscription', [SubscriptionController::class, 'createSubscription']);
-    Route::get('/check-access', [SubscriptionController::class, 'checkAccess']);
+Route::post('/create-subscription', [SubscriptionController::class, 'createSubscription']);
+
+Route::get('/check-access', [SubscriptionController::class, 'checkAccess']);
+
+Route::get('/payment-history', [SubscriptionController::class, 'paymentHistory']);
 
     Route::get('/education-modules', [EducationModuleController::class, 'index']);
     Route::get('/courses', [EducationContentController::class, 'courses']);
@@ -67,6 +70,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/posts', [CommunityController::class, 'getPosts']);
         Route::get('/posts/{id}', [CommunityController::class, 'getPost']);
         Route::post('/posts', [CommunityController::class, 'createPost']);
+            Route::get('/my-posts', [CommunityController::class, 'myPosts']);
+    Route::get('/my-comments', [CommunityController::class, 'myComments']);
+
+
         Route::post('/posts/{id}/like', [CommunityController::class, 'toggleLike']);
         Route::post('/posts/{id}/share', [CommunityController::class, 'sharePost']);
         Route::post('/posts/{id}/save', [CommunityController::class, 'toggleSave']);
