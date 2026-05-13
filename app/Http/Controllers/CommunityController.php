@@ -8,90 +8,115 @@ use App\Models\CommunityComment;
 
 class CommunityController extends Controller
 {
-    public function getPosts(Request $request)
-    {
-        $posts = CommunityPost::orderBy('created_at', 'desc')->paginate(20);
+   public function getPosts(Request $request)
+{
+    $posts = CommunityPost::orderBy('created_at', 'desc')
+        ->paginate(20);
 
-        foreach ($posts as $post) {
-            $post->is_liked_by_user = in_array(
-                (string)$request->user()->_id,
-                $post->likes ?? []
-            );
+    foreach ($posts as $post) {
 
-            $post->is_saved_by_user = in_array(
-                (string)$request->user()->_id,
-                $post->saved_by ?? []
-            );
-        }
+        $likes = is_array($post->likes)
+            ? $post->likes
+            : [];
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Posts fetched successfully',
-            'data' => $posts
-        ]);
-    }
-
-    public function getPost($id, Request $request)
-    {
-        $post = CommunityPost::findOrFail($id);
-
-        $comments = CommunityComment::where('post_id', $id)
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $savedBy = is_array($post->saved_by)
+            ? $post->saved_by
+            : [];
 
         $post->is_liked_by_user = in_array(
-            (string)$request->user()->_id,
-            $post->likes ?? []
+            (string) $request->user()->_id,
+            $likes
         );
 
         $post->is_saved_by_user = in_array(
-            (string)$request->user()->_id,
-            $post->saved_by ?? []
+            (string) $request->user()->_id,
+            $savedBy
         );
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Post fetched successfully',
-            'data' => [
-                'post' => $post,
-                'comments' => $comments
-            ]
-        ]);
     }
 
+    return response()->json([
+        'status' => true,
+        'message' => 'Posts fetched successfully',
+        'data' => $posts
+    ]);
+}
+
+public function getPost($id, Request $request)
+{
+    $post = CommunityPost::findOrFail($id);
+
+    $comments = CommunityComment::where('post_id', $id)
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+    $likes = is_array($post->likes)
+        ? $post->likes
+        : [];
+
+    $savedBy = is_array($post->saved_by)
+        ? $post->saved_by
+        : [];
+
+    $post->is_liked_by_user = in_array(
+        (string) $request->user()->_id,
+        $likes
+    );
+
+    $post->is_saved_by_user = in_array(
+        (string) $request->user()->_id,
+        $savedBy
+    );
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Post fetched successfully',
+        'data' => [
+            'post' => $post,
+            'comments' => $comments
+        ]
+    ]);
+}
     // CREATE POST
-    public function createPost(Request $request)
-    {
-        $request->validate([
-            'content' => 'required|string'
-        ]);
+  public function createPost(Request $request)
+{
+    $request->validate([
+        'content' => 'required|string'
+    ]);
 
-        $user = $request->user();
+    $user = $request->user();
 
-        $post = CommunityPost::create([
-            'user_id' => (string)$user->_id,
-            'user_name' => $user->full_name ?? $user->name ?? 'User',
-            'user_photo' => $user->profile_photo ?? null,
-            'content' => $request->input('content'),
+    $post = CommunityPost::create([
+        'user_id' => (string)$user->_id,
 
-            'likes' => [],
-            'likes_count' => 0,
+        'user_name' =>
+            $user->full_name
+            ?? $user->name
+            ?? 'User',
 
-            'shares' => [],
-            'shares_count' => 0,
+        'user_photo' =>
+            $user->profile_photo ?? null,
 
-            'saved_by' => [],
-            'saved_count' => 0,
+        'content' =>
+            $request->input('content'),
 
-            'comments_count' => 0,
-        ]);
+        'likes' => (array) [],
+        'likes_count' => 0,
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Post created successfully',
-            'data' => $post
-        ], 201);
-    }
+        'shares' => (array) [],
+        'shares_count' => 0,
+
+        'saved_by' => (array) [],
+        'saved_count' => 0,
+
+        'comments_count' => 0,
+    ]);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Post created successfully',
+        'data' => $post
+    ], 201);
+}
 
     // LIKE POST
     public function toggleLike($id, Request $request)
@@ -166,64 +191,95 @@ class CommunityController extends Controller
     }
 
     // SAVE POST
-    public function toggleSave($id, Request $request)
-    {
-        $post = CommunityPost::findOrFail($id);
+public function toggleSave($id, Request $request)
+{
+    $post = CommunityPost::findOrFail($id);
 
-        $userId = (string)$request->user()->_id;
+    $userId = (string)$request->user()->_id;
 
-        if (in_array($userId, $post->saved_by ?? [])) {
+    $savedBy = $post->saved_by ?? [];
 
-            $post->saved_by = array_values(
-                array_diff($post->saved_by ?? [], [$userId])
-            );
+    if (in_array($userId, $savedBy)) {
 
-            $post->saved_count = max(
-                0,
-                ($post->saved_count ?? 0) - 1
-            );
+        // UNSAVE
+        $post->saved_by = array_values(
+            array_diff($savedBy, [$userId])
+        );
 
-            $saved = false;
+        $post->saved_count = max(
+            0,
+            ($post->saved_count ?? 0) - 1
+        );
 
-        } else {
+        $saved = false;
 
-            $post->saved_by = array_merge(
-                $post->saved_by ?? [],
-                [$userId]
-            );
+    } else {
 
-            $post->saved_count = ($post->saved_count ?? 0) + 1;
+        // SAVE
+        $savedBy[] = $userId;
 
-            $saved = true;
-        }
+        $post->saved_by = array_values(
+            array_unique($savedBy)
+        );
 
-        $post->save();
+        $post->saved_count =
+            ($post->saved_count ?? 0) + 1;
 
-        return response()->json([
-            'status' => true,
-            'message' => $saved ? 'Post saved' : 'Post unsaved',
-            'data' => [
-                'saved' => $saved,
-                'saved_count' => $post->saved_count
-            ]
-        ]);
+        $saved = true;
     }
 
-    // SAVED POSTS
-    public function getSavedPosts(Request $request)
-    {
-        $userId = (string)$request->user()->_id;
+    $post->save();
 
-        $posts = CommunityPost::where('saved_by', 'all', [$userId])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+    return response()->json([
+        'status' => true,
+        'message' => $saved
+            ? 'Post saved'
+            : 'Post unsaved',
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Saved posts fetched successfully',
-            'data' => $posts
-        ]);
+        'data' => [
+            'saved' => $saved,
+            'saved_count' => $post->saved_count,
+            'saved_by' => $post->saved_by
+        ]
+    ]);
+}
+public function getSavedPosts(Request $request)
+{
+    $userId = (string)$request->user()->_id;
+
+    $posts = CommunityPost::where(
+        'saved_by',
+        $userId
+    )
+    ->orderBy('created_at', 'desc')
+    ->paginate(20);
+
+    foreach ($posts as $post) {
+
+        $post->is_liked_by_user = in_array(
+            $userId,
+            $post->likes ?? []
+        );
+
+        $post->is_saved_by_user = in_array(
+            $userId,
+            $post->saved_by ?? []
+        );
+
+        $post->comments = CommunityComment::where(
+            'post_id',
+            (string)$post->_id
+        )
+        ->orderBy('created_at', 'asc')
+        ->get();
     }
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Saved posts fetched successfully',
+        'data' => $posts
+    ]);
+}
 
     // STORE COMMENT
     public function storeComment(Request $request)

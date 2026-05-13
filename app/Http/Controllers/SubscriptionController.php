@@ -88,20 +88,27 @@ class SubscriptionController extends Controller
 
         Log::info('Webhook Event', ['event' => $event]);
 
-        if ($event == 'subscription.activated') {
+      if ($event == 'subscription.activated') {
 
-            $subId = $data['payload']['subscription']['entity']['id'] ?? null;
+    $subId = $data['payload']['subscription']['entity']['id'] ?? null;
 
-            $payment = UserPayment::where('subscription_id', $subId)->first();
+    // Razorpay amount paisa me hota hai
+    $amount = ($data['payload']['payment']['entity']['amount'] ?? 0) / 100;
 
-            if ($payment) {
-                $payment->update([
-                    'status' => 'success',
-                    'start_date' => now(),
-                    'end_date' => now()->addYear()
-                ]);
-            }
-        }
+    $payment = UserPayment::where('subscription_id', $subId)->first();
+
+    if ($payment) {
+
+        $payment->update([
+            'status' => 'success',
+
+            'amount' => $amount,
+
+            'start_date' => now(),
+            'end_date' => now()->addYear()
+        ]);
+    }
+}
 
         if ($event == 'subscription.cancelled') {
 
