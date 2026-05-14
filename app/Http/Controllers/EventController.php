@@ -14,10 +14,10 @@ class EventController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'start_datetime' => 'required|date',  
+            'start_datetime' => 'required|date|after:now',  
             'end_datetime' => 'nullable|date|after_or_equal:start_datetime',
             'type' => 'nullable|in:event,task',
-            'reminder_time' => 'nullable|date',  
+            'reminder_time' => 'nullable|date|after_or_equal:now',  
             'repeat_type' => 'nullable|in:none,daily,weekly,monthly,yearly',
         ]);
 
@@ -26,14 +26,10 @@ class EventController extends Controller
             'type' => $request->type ?? 'event',
             'title' => $request->title,
             'description' => $request->description,
-            'start_datetime' => Carbon::parse($request->start_datetime),
-            'end_datetime' => $request->end_datetime
-                ? Carbon::parse($request->end_datetime)
-                : null,
+            'start_datetime' => $request->start_datetime,
+            'end_datetime' => $request->end_datetime,
             'is_all_day' => $request->is_all_day ?? false,
-            'reminder_time' => $request->reminder_time
-                ? Carbon::parse($request->reminder_time)
-                : null,
+            'reminder_time' => $request->reminder_time,
             'repeat_type' => $request->repeat_type ?? 'none',
             'is_completed' => false,
             'is_notified' => false,
@@ -68,18 +64,7 @@ class EventController extends Controller
 
         $events = $query->orderBy('start_datetime', 'asc')->get();
 
-        $events->transform(function ($event) {
-            if ($event->start_datetime) {
-                $event->start_datetime = $event->start_datetime->setTimezone('Asia/Kolkata')->toDateTimeString();
-            }
-            if ($event->end_datetime) {
-                $event->end_datetime = $event->end_datetime->setTimezone('Asia/Kolkata')->toDateTimeString();
-            }
-            if ($event->reminder_time) {
-                $event->reminder_time = $event->reminder_time->setTimezone('Asia/Kolkata')->toDateTimeString();
-            }
-            return $event;
-        });
+      
 
         return response()->json([
             'status' => true,
