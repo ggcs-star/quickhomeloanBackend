@@ -14,10 +14,10 @@ class EventController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'start_datetime' => 'required|date|after:now',  
+            'start_datetime' => 'required|date',  
             'end_datetime' => 'nullable|date|after_or_equal:start_datetime',
             'type' => 'nullable|in:event,task',
-            'reminder_time' => 'nullable|date|after_or_equal:now',  
+            'reminder_time' => 'nullable|date',  
             'repeat_type' => 'nullable|in:none,daily,weekly,monthly,yearly',
         ]);
 
