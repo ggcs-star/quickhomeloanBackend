@@ -27,10 +27,10 @@ class Event extends Model
         'is_notified',
     ];
 
-    protected $casts = [
-        'start_datetime' => 'datetime',
-        'end_datetime' => 'datetime',
-        'reminder_time' => 'datetime',
+   protected $casts = [
+        'start_datetime' => 'string',
+        'end_datetime' => 'string',
+        'reminder_time' => 'string',
         'is_all_day' => 'boolean',
         'is_completed' => 'boolean',
         'is_notified' => 'boolean',
