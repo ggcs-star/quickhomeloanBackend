@@ -14,10 +14,10 @@ class EventController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'start_datetime' => 'required|date',
+            'start_datetime' => 'required|date',  
             'end_datetime' => 'nullable|date|after_or_equal:start_datetime',
             'type' => 'nullable|in:event,task',
-            'reminder_time' => 'nullable|date',
+            'reminder_time' => 'nullable|date',  
             'repeat_type' => 'nullable|in:none,daily,weekly,monthly,yearly',
         ]);
 
@@ -68,13 +68,25 @@ class EventController extends Controller
 
         $events = $query->orderBy('start_datetime', 'asc')->get();
 
+        $events->transform(function ($event) {
+            if ($event->start_datetime) {
+                $event->start_datetime = $event->start_datetime->setTimezone('Asia/Kolkata')->toDateTimeString();
+            }
+            if ($event->end_datetime) {
+                $event->end_datetime = $event->end_datetime->setTimezone('Asia/Kolkata')->toDateTimeString();
+            }
+            if ($event->reminder_time) {
+                $event->reminder_time = $event->reminder_time->setTimezone('Asia/Kolkata')->toDateTimeString();
+            }
+            return $event;
+        });
+
         return response()->json([
             'status' => true,
             'data' => $events
         ]);
     }
 
-    // 📌 Show Single
     public function show($id)
     {
         $event = Event::where('user_id', auth()->id())->find($id);
