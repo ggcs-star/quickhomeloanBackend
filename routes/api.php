@@ -20,6 +20,7 @@ use App\Http\Controllers\LoanInquiryController;
 use App\Http\Controllers\ContactInquiryController;
 use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\PodcastController;
+use App\Http\Controllers\AppSettingController;
 
 Route::get('/test', function () {
     return ['status' => 'API working'];
@@ -32,6 +33,8 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::post('/apply-loan/store', [ApplyLoanController::class, 'store']);
 
 Route::get('/calculators', [CalculatorController::class, 'index']);
+Route::get('/app-settings', [AppSettingController::class, 'index']);
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', function (Request $request) {
