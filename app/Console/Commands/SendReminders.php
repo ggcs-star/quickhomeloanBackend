@@ -17,7 +17,7 @@ class SendReminders extends Command
 
     public function handle()
     {
-        $now = Carbon::now();
+        $now = Carbon::now()->format('Y-m-d H:i:s');
         
         $reminders = Event::where('is_notified', false)
             ->whereNotNull('reminder_time')
@@ -33,7 +33,7 @@ class SendReminders extends Command
     
     private function sendReminder($event)
     {
-        $title = $event->type === 'event' ? '📅 Event Reminder' : '✅ Task Reminder';
+        $title = $event->type === 'event' ? 'Event Reminder' : 'Task Reminder';
         
         if ($event->is_all_day) {
             $date = Carbon::parse($event->start_datetime)->format('d M Y');
@@ -42,7 +42,6 @@ class SendReminders extends Command
             $body = $event->title . ' - ' . Carbon::parse($event->start_datetime)->format('d M Y h:i A');
         }
         
-        // Save to database notification center
         UserNotification::create([
             'user_id' => $event->user_id,
             'title' => $title,
@@ -51,7 +50,6 @@ class SendReminders extends Command
             'created_at' => now()
         ]);
         
-        // Send Firebase Push Notification
         $this->sendFirebasePush($event->user_id, $title, $body);
         
         $event->is_notified = true;
@@ -71,16 +69,19 @@ class SendReminders extends Command
                 ->toArray();
             
             if (empty($tokens)) {
+                \Log::info('No FCM token found for user: ' . $userId);
                 return;
             }
             
             $serviceAccountPath = env('FIREBASE_SERVICE_ACCOUNT');
             if (!$serviceAccountPath) {
+                \Log::error('FIREBASE_SERVICE_ACCOUNT not set in .env');
                 return;
             }
             
             $fullPath = base_path($serviceAccountPath);
             if (!file_exists($fullPath)) {
+                \Log::error('Firebase service account file not found: ' . $fullPath);
                 return;
             }
             
@@ -91,6 +92,7 @@ class SendReminders extends Command
             $tokenArray = $client->fetchAccessTokenWithAssertion();
             
             if (!isset($tokenArray['access_token'])) {
+                \Log::error('Failed to get access token from Firebase');
                 return;
             }
             
@@ -98,6 +100,7 @@ class SendReminders extends Command
             $projectId = env('FIREBASE_PROJECT_ID');
             
             if (!$projectId) {
+                \Log::error('FIREBASE_PROJECT_ID not set in .env');
                 return;
             }
             
@@ -111,21 +114,42 @@ class SendReminders extends Command
                             'title' => $title,
                             'body' => $body,
                         ],
+                        'data' => [
+                            'title' => $title,
+                            'body' => $body,
+                            'type' => 'calendar_reminder',
+                        ],
                         'android' => [
                             'priority' => 'high',
+                            'notification' => [
+                                'channel_id' => 'calendar_reminders',
+                                'priority' => 'high',
+                                'sound' => 'default',
+                            ],
                         ],
                         'apns' => [
                             'headers' => [
                                 'apns-priority' => '10',
                             ],
+                            'payload' => [
+                                'aps' => [
+                                    'sound' => 'default',
+                                ],
+                            ],
                         ],
                     ],
                 ];
                 
-                Http::withHeaders([
+                $response = Http::withHeaders([
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Content-Type' => 'application/json',
                 ])->post($url, $payload);
+                
+                if ($response->successful()) {
+                    \Log::info('FCM sent successfully for token: ' . substr($token, 0, 20) . '...');
+                } else {
+                    \Log::error('FCM failed: ' . $response->body());
+                }
             }
             
         } catch (\Exception $e) {
