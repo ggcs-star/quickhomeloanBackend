@@ -61,101 +61,87 @@ class SendReminders extends Command
     }
     
     private function sendFirebasePush($userId, $title, $body)
-    {
-        try {
-            $tokens = FcmToken::where('user_id', $userId)
-                ->whereNotNull('token')
-                ->pluck('token')
-                ->toArray();
-            
-            if (empty($tokens)) {
-                \Log::info('No FCM token found for user: ' . $userId);
-                return;
-            }
-            
-            $serviceAccountPath = env('FIREBASE_SERVICE_ACCOUNT');
-            if (!$serviceAccountPath) {
-                \Log::error('FIREBASE_SERVICE_ACCOUNT not set in .env');
-                return;
-            }
-            
-            $fullPath = base_path($serviceAccountPath);
-            if (!file_exists($fullPath)) {
-                \Log::error('Firebase service account file not found: ' . $fullPath);
-                return;
-            }
-            
-            $client = new GoogleClient();
-            $client->setAuthConfig($fullPath);
-            $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
-            
-            $tokenArray = $client->fetchAccessTokenWithAssertion();
-            
-            if (!isset($tokenArray['access_token'])) {
-                \Log::error('Failed to get access token from Firebase');
-                return;
-            }
-            
-            $accessToken = $tokenArray['access_token'];
-            $projectId = env('FIREBASE_PROJECT_ID');
-            
-            if (!$projectId) {
-                \Log::error('FIREBASE_PROJECT_ID not set in .env');
-                return;
-            }
-            
-            $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
-            
-            foreach ($tokens as $token) {
-                $payload = [
-                    'message' => [
-                        'token' => $token,
-                        'notification' => [
-                            'title' => $title,
-                            'body' => $body,
-                        ],
-                        'data' => [
-                            'title' => $title,
-                            'body' => $body,
-                            'type' => 'calendar_reminder',
-                        ],
-                        'android' => [
-                            'priority' => 'high',
-                            'notification' => [
-                                'channel_id' => 'calendar_reminders',
-                                'priority' => 'high',
-                                'sound' => 'default',
-                            ],
-                        ],
-                        'apns' => [
-                            'headers' => [
-                                'apns-priority' => '10',
-                            ],
-                            'payload' => [
-                                'aps' => [
-                                    'sound' => 'default',
-                                ],
-                            ],
+{
+    try {
+        $tokens = FcmToken::where('user_id', $userId)
+            ->whereNotNull('token')
+            ->pluck('token')
+            ->toArray();
+        
+        if (empty($tokens)) {
+            \Log::info('No FCM token found for user: ' . $userId);
+            return;
+        }
+        
+        $serviceAccountPath = env('FIREBASE_SERVICE_ACCOUNT');
+        if (!$serviceAccountPath) {
+            \Log::error('FIREBASE_SERVICE_ACCOUNT not set in .env');
+            return;
+        }
+        
+        $fullPath = base_path($serviceAccountPath);
+        if (!file_exists($fullPath)) {
+            \Log::error('Firebase service account file not found: ' . $fullPath);
+            return;
+        }
+        
+        $client = new GoogleClient();
+        $client->setAuthConfig($fullPath);
+        $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
+        
+        $tokenArray = $client->fetchAccessTokenWithAssertion();
+        
+        if (!isset($tokenArray['access_token'])) {
+            \Log::error('Failed to get access token from Firebase');
+            return;
+        }
+        
+        $accessToken = $tokenArray['access_token'];
+        $projectId = env('FIREBASE_PROJECT_ID');
+        
+        if (!$projectId) {
+            \Log::error('FIREBASE_PROJECT_ID not set in .env');
+            return;
+        }
+        
+        $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+        
+        foreach ($tokens as $token) {
+            // 🔥 REMOVE 'data' field - ADMIN JESA PURE NOTIFICATION
+            $payload = [
+                'message' => [
+                    'token' => $token,
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                    ],
+                    'android' => [
+                        'priority' => 'high',
+                    ],
+                    'apns' => [
+                        'headers' => [
+                            'apns-priority' => '10',
                         ],
                     ],
-                ];
-                
-                $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Content-Type' => 'application/json',
-                ])->post($url, $payload);
-                
-                if ($response->successful()) {
-                    \Log::info('FCM sent successfully for token: ' . substr($token, 0, 20) . '...');
-                } else {
-                    \Log::error('FCM failed: ' . $response->body());
-                }
-            }
+                ],
+            ];
             
-        } catch (\Exception $e) {
-            \Log::error('Firebase push error: ' . $e->getMessage());
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Content-Type' => 'application/json',
+            ])->post($url, $payload);
+            
+            if ($response->successful()) {
+                \Log::info('FCM sent successfully for token: ' . substr($token, 0, 20) . '...');
+            } else {
+                \Log::error('FCM failed: ' . $response->body());
+            }
         }
+        
+    } catch (\Exception $e) {
+        \Log::error('Firebase push error: ' . $e->getMessage());
     }
+}
     
     private function scheduleNextReminder($event)
     {

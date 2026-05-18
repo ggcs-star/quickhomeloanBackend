@@ -21,6 +21,7 @@ use App\Http\Controllers\ContactInquiryController;
 use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\PodcastController;
 use App\Http\Controllers\AppSettingController;
+use App\Http\Controllers\SearchController;
 
 Route::get('/test', function () {
     return ['status' => 'API working'];
@@ -130,5 +131,8 @@ Route::prefix('contact')->group(function () {
 
 });
 
- Route::post('/fcm/notify-all', [NotificationController::class, 'notifyAll']);
-    Route::get('/fcm/history', [NotificationController::class, 'getHistory']);
+Route::post('/fcm/notify-all', [NotificationController::class, 'notifyAll']);
+Route::get('/fcm/history', [NotificationController::class, 'getHistory']);
+Route::get('/search', [SearchController::class, 'search']);
+Route::get('/search/suggestions', [SearchController::class, 'suggestions']);
+Route::get('/search/popular', [SearchController::class, 'popular']);
