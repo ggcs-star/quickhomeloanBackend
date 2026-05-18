@@ -10,6 +10,8 @@ use App\Models\Calculator;
 use App\Models\Event;
 use App\Models\CommunityPost;
 use App\Models\Lender;
+use App\Models\EducationModule;
+use App\Models\EducationContent;
 
 class SearchController extends Controller
 {
@@ -38,7 +40,6 @@ class SearchController extends Controller
                         'type' => 'course',
                         'title' => $item->title,
                         'description' => $item->description,
-                        'image' => $item->image,
                         'url' => "/courses/{$item->id}/modules",
                         'icon' => 'BookOpen'
                     ];
@@ -46,7 +47,7 @@ class SearchController extends Controller
             $results = array_merge($results, $courses->toArray());
         }
         
-        if ($type == 'all' || $type == 'reels') {
+       if ($type == 'all' || $type == 'reels') {
             $reels = Reel::where('title', 'like', "%{$query}%")
                 ->orWhere('description', 'like', "%{$query}%")
                 ->get()
@@ -56,26 +57,23 @@ class SearchController extends Controller
                         'type' => 'reel',
                         'title' => $item->title,
                         'description' => $item->description,
-                        'thumbnail' => $item->thumbnail,
-                        'url' => "/reels/{$item->id}",
+                        'url' => "/reels",
                         'icon' => 'Video'
                     ];
                 });
             $results = array_merge($results, $reels->toArray());
         }
-        
+
         if ($type == 'all' || $type == 'podcasts') {
             $podcasts = Podcast::where('title', 'like', "%{$query}%")
-                ->orWhere('description', 'like', "%{$query}%")
                 ->get()
                 ->map(function($item) {
                     return [
                         'id' => $item->id,
                         'type' => 'podcast',
                         'title' => $item->title,
-                        'description' => $item->description,
-                        'image' => $item->image,
-                        'url' => "/podcasts/{$item->id}",
+                        'description' => $item->description ?? '',
+                        'url' => "/podcasts",
                         'icon' => 'Mic'
                     ];
                 });
@@ -92,7 +90,7 @@ class SearchController extends Controller
                         'type' => 'post',
                         'title' => $item->user_name,
                         'description' => substr($item->content, 0, 100),
-                        'url' => "/community/post/{$item->id}",
+                        'url' => "/community",
                         'icon' => 'MessageSquare'
                     ];
                 });
@@ -108,12 +106,13 @@ class SearchController extends Controller
                         'type' => 'calculator',
                         'title' => $item->name,
                         'description' => $item->description ?? 'Financial calculator',
-                        'url' => $item->slug ? "/calculator/{$item->slug}" : "/calculators",
+                        'url' => "tools/calculators",
                         'icon' => 'Calculator'
                     ];
                 });
             $results = array_merge($results, $calculators->toArray());
         }
+        
         if ($type == 'all' || $type == 'events') {
             $events = Event::where('title', 'like', "%{$query}%")
                 ->where('user_id', auth()->id())
@@ -140,11 +139,46 @@ class SearchController extends Controller
                         'type' => 'lender',
                         'title' => $item->name,
                         'description' => $item->description ?? 'Lender partner',
-                        'url' => "/lenders/{$item->id}",
+                        'url' => "/",
                         'icon' => 'Building'
                     ];
                 });
             $results = array_merge($results, $lenders->toArray());
+        }
+        
+        if ($type == 'all' || $type == 'modules') {
+            $modules = EducationModule::where('title', 'like', "%{$query}%")
+                ->orWhere('description', 'like', "%{$query}%")
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'type' => 'module',
+                        'title' => $item->title,
+                        'description' => $item->description,
+                        'url' => "/modules/{$item->id}/audio",
+                        'icon' => 'Folder'
+                    ];
+                });
+            $results = array_merge($results, $modules->toArray());
+        }
+        
+        if ($type == 'all' || $type == 'contents') {
+            $contents = EducationContent::where('title', 'like', "%{$query}%")
+                ->orWhere('description', 'like', "%{$query}%")
+                ->get()
+                ->map(function($item) {
+                    $url = $item->type == 'audio' ? "/modules/{$item->module_id}/audio" : "/modules/{$item->module_id}/video";
+                    return [
+                        'id' => $item->id,
+                        'type' => $item->type,
+                        'title' => $item->title,
+                        'description' => $item->description,
+                        'url' => $url,
+                        'icon' => $item->type == 'audio' ? 'Headphones' : 'Play'
+                    ];
+                });
+            $results = array_merge($results, $contents->toArray());
         }
         
         usort($results, function($a, $b) use ($query) {
@@ -162,6 +196,7 @@ class SearchController extends Controller
             ]
         ]);
     }
+    
     public function suggestions(Request $request)
     {
         $query = $request->input('q');
@@ -173,24 +208,38 @@ class SearchController extends Controller
         $suggestions = [];
         
         $courses = Course::where('title', 'like', "%{$query}%")
-            ->limit(3)
+            ->limit(2)
             ->get(['title']);
         foreach ($courses as $course) {
             $suggestions[] = $course->title;
         }
         
         $reels = Reel::where('title', 'like', "%{$query}%")
-            ->limit(3)
+            ->limit(2)
             ->get(['title']);
         foreach ($reels as $reel) {
             $suggestions[] = $reel->title;
         }
         
         $podcasts = Podcast::where('title', 'like', "%{$query}%")
-            ->limit(3)
+            ->limit(2)
             ->get(['title']);
         foreach ($podcasts as $podcast) {
             $suggestions[] = $podcast->title;
+        }
+        
+        $calculators = Calculator::where('name', 'like', "%{$query}%")
+            ->limit(2)
+            ->get(['name']);
+        foreach ($calculators as $calc) {
+            $suggestions[] = $calc->name;
+        }
+        
+        $modules = EducationModule::where('title', 'like', "%{$query}%")
+            ->limit(2)
+            ->get(['title']);
+        foreach ($modules as $module) {
+            $suggestions[] = $module->title;
         }
         
         $suggestions = array_unique($suggestions);
