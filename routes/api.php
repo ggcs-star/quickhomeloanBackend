@@ -135,4 +135,3 @@ Route::post('/fcm/notify-all', [NotificationController::class, 'notifyAll']);
 Route::get('/fcm/history', [NotificationController::class, 'getHistory']);
 Route::get('/search', [SearchController::class, 'search']);
 Route::get('/search/suggestions', [SearchController::class, 'suggestions']);
-Route::get('/search/popular', [SearchController::class, 'popular']);
