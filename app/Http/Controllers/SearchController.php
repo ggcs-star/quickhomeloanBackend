@@ -106,7 +106,7 @@ class SearchController extends Controller
                         'type' => 'calculator',
                         'title' => $item->name,
                         'description' => $item->description ?? 'Financial calculator',
-                        'url' => "tools/calculators",
+                        'url' => "tools/calculator",
                         'icon' => 'Calculator'
                     ];
                 });
@@ -139,10 +139,11 @@ class SearchController extends Controller
                         'type' => 'lender',
                         'title' => $item->name,
                         'description' => $item->description ?? 'Lender partner',
-                        'url' => "/",
+                        'url' => '/apply-loan?category=' . urlencode('Home Loan By Banks') . '&subcategory=' . urlencode($item->name),
                         'icon' => 'Building'
                     ];
                 });
+
             $results = array_merge($results, $lenders->toArray());
         }
         
