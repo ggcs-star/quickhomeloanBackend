@@ -109,8 +109,8 @@ Route::get('/payment-history', [SubscriptionController::class, 'paymentHistory']
 
 
 Route::post('/razorpay/webhook', [SubscriptionController::class, 'webhook']);
-// Route::get('/education/audio', [EducationModuleController::class, 'audioModules']);
-// Route::get('/education/video', [EducationModuleController::class, 'videoModules']);
+Route::get('/education/audio', [EducationModuleController::class, 'audioModules']);
+Route::get('/education/video', [EducationModuleController::class, 'videoModules']);
 
 Route::prefix('loan-inquiries')->group(function () {
 
